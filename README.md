@@ -6,7 +6,7 @@ A 3D voxel serpent web game featuring ancient Indian aesthetic themes, WebGL ren
 
 ## Quick Links
 
-- **App Link**: [Play Vasuki Indicus](https://premxpagar.github.io/vasuki-indicus-game/)
+- **App Link**: [Play Vasuki Indicus on AWS Amplify](https://main.d12d9hurljxv4f.amplifyapp.com/)
 - **GitHub Repository**: [premxpagar/vasuki-indicus-game](https://github.com/premxpagar/vasuki-indicus-game)
 - **Article / Technical Write-up**: [Architecture and Engineering Deep Dive](https://github.com/premxpagar/vasuki-indicus-game#architecture-overview)
 
