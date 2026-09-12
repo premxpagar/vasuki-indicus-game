@@ -26,3 +26,6 @@ samconfig.toml
 
 # Node Modules (if any installed locally)
 node_modules/
+
+# Local Drafts & Challenge Notes
+article/
