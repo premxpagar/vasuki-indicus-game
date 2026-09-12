@@ -7,9 +7,8 @@
  */
 
 export const CONFIG = {
-  // Set your deployed AWS API Gateway endpoint URL here or via window.VASUKI_API_GATEWAY_URL
-  // Example: 'https://abcdef1234.execute-api.us-east-1.amazonaws.com'
-  API_GATEWAY_URL: window.VASUKI_API_GATEWAY_URL || '',
+  // Production AWS API Gateway HTTP API endpoint
+  API_GATEWAY_URL: 'https://5si18uxg7i.execute-api.eu-north-1.amazonaws.com',
 
   // Endpoints
   LEADERBOARD_ENDPOINT: '/leaderboard',
