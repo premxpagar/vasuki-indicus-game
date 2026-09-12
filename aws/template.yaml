@@ -1,0 +1,102 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  VASUKI INDICUS — Rise of the Ancient Serpent
+  Global Leaderboard Serverless Backend (API Gateway + Lambda + DynamoDB)
+
+Globals:
+  Function:
+    Timeout: 10
+    MemorySize: 256
+    Runtime: nodejs20.x
+    LoggingConfig:
+      LogFormat: JSON
+
+Resources:
+  # ========================================================
+  # Amazon DynamoDB Table: VasukiLeaderboard
+  # Partition Key: gameId (String)
+  # Sort Key: score (Number)
+  # On-demand billing (Pay per request)
+  # ========================================================
+  VasukiLeaderboardTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: VasukiLeaderboard
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: gameId
+          AttributeType: S
+        - AttributeName: score
+          AttributeType: N
+      KeySchema:
+        - AttributeName: gameId
+          KeyType: HASH
+        - AttributeName: score
+          KeyType: RANGE
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+
+  # ========================================================
+  # Amazon API Gateway (HTTP API v2 with CORS)
+  # ========================================================
+  VasukiHttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      CorsConfiguration:
+        AllowOrigins:
+          - '*'
+        AllowMethods:
+          - GET
+          - POST
+          - OPTIONS
+        AllowHeaders:
+          - Content-Type
+          - X-Amz-Date
+          - Authorization
+          - X-Api-Key
+          - X-Amz-Security-Token
+        MaxAge: 300
+
+  # ========================================================
+  # AWS Lambda Function: Leaderboard Handler
+  # Least-privilege IAM policy granting access ONLY to the table
+  # ========================================================
+  VasukiLeaderboardFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambda/
+      Handler: index.handler
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref VasukiLeaderboardTable
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref VasukiLeaderboardTable
+      Events:
+        GetLeaderboard:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref VasukiHttpApi
+            Path: /leaderboard
+            Method: GET
+        PostLeaderboard:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref VasukiHttpApi
+            Path: /leaderboard
+            Method: POST
+        OptionsLeaderboard:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref VasukiHttpApi
+            Path: /leaderboard
+            Method: OPTIONS
+
+Outputs:
+  LeaderboardApiEndpoint:
+    Description: "API Gateway Endpoint URL — Copy this URL and paste it into js/config.js as API_GATEWAY_URL"
+    Value: !Sub "https://${VasukiHttpApi}.execute-api.${AWS::Region}.amazonaws.com"
+  DynamoDBTableName:
+    Description: "DynamoDB Leaderboard Table Name"
+    Value: !Ref VasukiLeaderboardTable
