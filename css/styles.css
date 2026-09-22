@@ -1098,6 +1098,21 @@ body.touch-ui .pixel-btn {
   box-shadow: 0 0 18px rgba(255, 215, 0, 0.6) !important;
 }
 
+.bot-launch-btn {
+  background: linear-gradient(135deg, #1b3a4b 0%, #216583 50%, #28b5b5 100%) !important;
+  border-color: #56ccf2 !important;
+  color: #fff8e7 !important;
+  box-shadow: 0 0 12px rgba(86, 204, 242, 0.4) !important;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  margin-top: 4px;
+}
+
+.bot-launch-btn:hover {
+  background: linear-gradient(135deg, #216583 0%, #28b5b5 50%, #68d8d6 100%) !important;
+  box-shadow: 0 0 18px rgba(86, 204, 242, 0.7) !important;
+}
+
 .mp-tabs {
   display: flex;
   width: 100%;

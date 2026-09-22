@@ -7,9 +7,9 @@ import { AudioSystem } from './AudioSystem.js';
 import { UIManager } from './UIManager.js';
 import { REALM_PRESETS } from './DayNightCycle.js';
 import { SkinPreviewRenderer } from './SkinPreviewRenderer.js';
-import { LeaderboardService } from './LeaderboardService.js';
 import { NetworkManager } from './NetworkManager.js';
 import { RemoteSnake } from './RemoteSnake.js';
+import { BotController } from './BotController.js';
 import { CONFIG } from './config.js';
 
 class GameApp {
@@ -25,6 +25,14 @@ class GameApp {
     this.p1Data = { name: 'Player 1', score: 0, lives: 3 };
     this.p2Data = { name: 'Player 2', score: 0, lives: 3 };
     this.lastTickSentTime = 0;
+
+    // Computer / Bot State
+    this.botSnake = null;
+    this.botController = new BotController();
+    this.playerLives = 3;
+    this.botLives = 3;
+    this.playerScore = 0;
+    this.botScore = 0;
 
     this.score = 0;
     this.highScore = parseInt(localStorage.getItem('vasuki_indicus_highscore') || '0', 10);
@@ -286,6 +294,15 @@ class GameApp {
     document.getElementById('start-endless-btn').addEventListener('click', () => {
       this.gameMode = 'ENDLESS';
       this.startGame();
+    });
+
+    document.getElementById('start-vs-bot-btn')?.addEventListener('click', () => {
+      this.startVsComputerGame();
+    });
+
+    document.getElementById('mp-practice-bot-btn')?.addEventListener('click', () => {
+      this.uiManager.hideMultiplayerScreen();
+      this.startVsComputerGame();
     });
 
     this.setupMultiplayerUI();
@@ -591,6 +608,10 @@ class GameApp {
       this.remoteSnake.destroy();
       this.remoteSnake = null;
     }
+    if (this.botSnake) {
+      this.botSnake.destroy();
+      this.botSnake = null;
+    }
     this.gameMode = 'CAMPAIGN';
     this.gameState = 'START_SCREEN';
     this.pausedForSettings = false;
@@ -600,6 +621,103 @@ class GameApp {
     this.snake.reset();
     this.cameraManager.reset();
     this.uiManager.showStartScreen();
+  }
+
+  startVsComputerGame() {
+    if (this.networkManager) {
+      this.networkManager.leaveRoom();
+    }
+    if (this.remoteSnake) {
+      this.remoteSnake.destroy();
+      this.remoteSnake = null;
+    }
+    if (this.botSnake) {
+      this.botSnake.destroy();
+      this.botSnake = null;
+    }
+
+    this.gameMode = 'VS_COMPUTER';
+    this.playerLives = 3;
+    this.botLives = 3;
+    this.playerScore = 0;
+    this.botScore = 0;
+    this.score = 0;
+    this.applesEaten = 0;
+    this.isBoosting = false;
+    this.nitroEnergy = 100;
+    this.jumpEnergy = 100;
+
+    // Player snake setup (spawns on West)
+    this.snake.reset();
+    this.snake.respawnAt(-16, 0.5, 0, Math.PI / 2, false);
+
+    // Bot snake setup (spawns on East with Obsidian skin)
+    this.botSnake = new Snake(this.engine.scene, this.audioSystem, 'obsidian');
+    this.botSnake.respawnAt(16, 0.5, 0, -Math.PI / 2, false);
+
+    // Arena setup
+    this.obstacles.setupSectorObstacles(1);
+    this.foodManager.clearAll();
+    this.foodManager.spawnInitial(6);
+    this.cameraManager.reset();
+
+    this.touchSteering = 0;
+    this.touchBoosting = false;
+    this.pausedForSettings = false;
+    this.resumeGrace = true;
+    this.gameState = 'PLAYING';
+
+    this.uiManager.showGameHUD(true);
+    this.uiManager.setupMultiplayerHUD('YOU', 'KALIYA (AI)');
+    this.uiManager.updateMultiplayerHUD(0, 0, 3, 3);
+    this.audioSystem.startMusic();
+  }
+
+  handleVsComputerGameOver() {
+    this.gameState = 'GAME_OVER';
+    this.audioSystem.stopMusic();
+    this.cameraManager.triggerShake(0.6);
+
+    let winnerSlot = 'draw';
+    let winnerName = 'Sacred Draw';
+    let reason = 'The contest ended with equal valor!';
+
+    if (this.playerScore > this.botScore) {
+      winnerSlot = 1;
+      winnerName = 'YOU';
+      reason = 'You outscored the ancient Kaliya AI!';
+    } else if (this.botScore > this.playerScore) {
+      winnerSlot = 2;
+      winnerName = 'Kaliya AI';
+      reason = 'Kaliya gathered more sacred offerings!';
+    } else {
+      if (this.playerLives > this.botLives) {
+        winnerSlot = 1;
+        winnerName = 'YOU';
+        reason = 'You survived with more lives remaining!';
+      } else if (this.botLives > this.playerLives) {
+        winnerSlot = 2;
+        winnerName = 'Kaliya AI';
+        reason = 'Kaliya survived with more lives remaining!';
+      }
+    }
+
+    this.uiManager.showMultiplayerGameOver(
+      winnerSlot,
+      winnerName,
+      reason,
+      { name: 'YOU', score: this.playerScore, lives: this.playerLives },
+      { name: 'KALIYA (AI)', score: this.botScore, lives: this.botLives },
+      1
+    );
+
+    const rematchBtn = document.getElementById('mp-rematch-btn');
+    if (rematchBtn) {
+      rematchBtn.onclick = () => {
+        this.uiManager.hideMultiplayerGameOver();
+        this.startVsComputerGame();
+      };
+    }
   }
 
   setupMultiplayerUI() {
@@ -1232,6 +1350,78 @@ class GameApp {
           this.snake.isInvulnerable = true;
           this.snake.invulnTimer = 3.0; // Debounce until server confirms
         }
+      }
+      return;
+    }
+
+    // --- VS COMPUTER (AI BOT) GAMEPLAY LOGIC ---
+    if (this.gameMode === 'VS_COMPUTER') {
+      if (this.botSnake) {
+        const { steer, boost } = this.botController.compute(
+          this.botSnake,
+          this.foodManager.items,
+          this.obstacles,
+          this.snake,
+          delta
+        );
+        this.botSnake.update(steer, boost, delta);
+      }
+
+      this.foodManager.update(time, delta);
+
+      // Player pickups
+      const pPickup = this.foodManager.checkPickups(this.snake.headPos, this.snake.yOffset);
+      if (pPickup) {
+        this.playerScore += 10;
+        this.score = this.playerScore;
+        this.snake.addSegment();
+        this.audioSystem.playEat(1);
+        this.foodManager.spawnItem('core');
+      }
+
+      // Bot pickups
+      if (this.botSnake) {
+        const bPickup = this.foodManager.checkPickups(this.botSnake.headPos, this.botSnake.yOffset);
+        if (bPickup) {
+          this.botScore += 10;
+          this.botSnake.addSegment();
+          this.audioSystem.playEat(1);
+          this.foodManager.spawnItem('core');
+        }
+      }
+
+      // 3-Lives Collision Checks for VS Computer
+      if (this.botSnake) {
+        const playerHitsBotBody = this.botSnake.checkBodyCollision(this.snake.headPos);
+        const botHitsPlayerBody = this.snake.checkBodyCollision(this.botSnake.headPos);
+        const headOn = Math.hypot(this.snake.headPos.x - this.botSnake.headPos.x, this.snake.headPos.z - this.botSnake.headPos.z) < 1.35;
+        const playerHitObs = this.obstacles.checkCollisions(this.snake.headPos, this.snake.yOffset) || this.snake.checkSelfCollision() || this.snake.checkBoundaryCollision();
+        const botHitObs = this.obstacles.checkCollisions(this.botSnake.headPos, this.botSnake.yOffset) || this.botSnake.checkSelfCollision() || this.botSnake.checkBoundaryCollision();
+
+        // Player life loss
+        if (!this.snake.isInvulnerable) {
+          if (playerHitsBotBody || headOn || playerHitObs) {
+            this.playerLives = Math.max(0, this.playerLives - 1);
+            this.audioSystem.playExplosion();
+            this.cameraManager.triggerShake(0.5);
+            this.snake.respawnAt(-16, 0.5, 0, Math.PI / 2, true);
+          }
+        }
+
+        // Bot life loss
+        if (!this.botSnake.isInvulnerable) {
+          if (botHitsPlayerBody || headOn || botHitObs) {
+            this.botLives = Math.max(0, this.botLives - 1);
+            this.audioSystem.playExplosion();
+            this.botSnake.respawnAt(16, 0.5, 0, -Math.PI / 2, true);
+          }
+        }
+      }
+
+      this.uiManager.updateMultiplayerHUD(this.playerScore, this.botScore, this.playerLives, this.botLives);
+
+      if (this.playerLives <= 0 || this.botLives <= 0) {
+        this.handleVsComputerGameOver();
       }
       return;
     }

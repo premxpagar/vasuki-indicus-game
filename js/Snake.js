@@ -76,7 +76,7 @@ export const SNAKE_SKINS = {
 };
 
 export class Snake {
-    constructor(scene, soundManager) {
+    constructor(scene, soundManager, customSkinId = null) {
         this.scene = scene;
         
         // Movement params
@@ -116,8 +116,12 @@ export class Snake {
         this.segments = [];
 
         // Load skin
-        const savedSkin = localStorage.getItem('vasuki_snake_skin');
-        this.currentSkinId = (savedSkin && SNAKE_SKINS[savedSkin]) ? savedSkin : 'emerald';
+        if (customSkinId && SNAKE_SKINS[customSkinId]) {
+            this.currentSkinId = customSkinId;
+        } else {
+            const savedSkin = localStorage.getItem('vasuki_snake_skin');
+            this.currentSkinId = (savedSkin && SNAKE_SKINS[savedSkin]) ? savedSkin : 'emerald';
+        }
         this.skin = SNAKE_SKINS[this.currentSkinId];
         
         this.createHeadMesh();
@@ -571,6 +575,30 @@ export class Snake {
     checkBoundaryCollision(arenaHalf = 76) {
         if (this.isInvulnerable) return false;
         return Math.abs(this.headPos.x) > arenaHalf || Math.abs(this.headPos.z) > arenaHalf;
+    }
+
+    checkBodyCollision(targetPos, radius = 0.75) {
+        if (this.isInvulnerable) return false;
+        for (let i = 0; i < this.segments.length; i++) {
+            const seg = this.segments[i];
+            const dx = targetPos.x - seg.mesh.position.x;
+            const dz = targetPos.z - seg.mesh.position.z;
+            if (dx * dx + dz * dz < radius * radius) return true;
+        }
+        return false;
+    }
+
+    destroy() {
+        if (this.headGroup) this.scene.remove(this.headGroup);
+        for (const seg of this.segments) {
+            if (seg.mesh) {
+                this.scene.remove(seg.mesh);
+                if (seg.mesh.geometry) seg.mesh.geometry.dispose();
+                if (seg.mesh.material) seg.mesh.material.dispose();
+            }
+        }
+        this.segments = [];
+        if (this.dustTrail) this.dustTrail.destroy();
     }
 
     getLengthMeters() {
