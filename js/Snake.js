@@ -598,7 +598,9 @@ export class Snake {
             }
         }
         this.segments = [];
-        if (this.dustTrail) this.dustTrail.destroy();
+        if (this.dustTrail && typeof this.dustTrail.destroy === 'function') {
+            this.dustTrail.destroy();
+        }
     }
 
     getLengthMeters() {

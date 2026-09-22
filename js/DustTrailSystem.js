@@ -76,4 +76,12 @@ export class DustTrailSystem {
         }
         this.instancedMesh.instanceMatrix.needsUpdate = true;
     }
+
+    destroy() {
+        if (this.instancedMesh) {
+            this.scene.remove(this.instancedMesh);
+            if (this.instancedMesh.geometry) this.instancedMesh.geometry.dispose();
+            if (this.instancedMesh.material) this.instancedMesh.material.dispose();
+        }
+    }
 }

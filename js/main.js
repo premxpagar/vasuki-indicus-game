@@ -7,6 +7,7 @@ import { AudioSystem } from './AudioSystem.js';
 import { UIManager } from './UIManager.js';
 import { REALM_PRESETS } from './DayNightCycle.js';
 import { SkinPreviewRenderer } from './SkinPreviewRenderer.js';
+import { LeaderboardService } from './LeaderboardService.js';
 import { NetworkManager } from './NetworkManager.js';
 import { RemoteSnake } from './RemoteSnake.js';
 import { BotController } from './BotController.js';
