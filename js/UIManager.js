@@ -22,6 +22,17 @@ export class UIManager {
 
     this.buffContainer = document.getElementById('buff-container');
     this.objectiveBanner = document.getElementById('objective-banner');
+
+    // Multiplayer UI elements
+    this.mpScreen = document.getElementById('multiplayer-screen');
+    this.mpGameOverScreen = document.getElementById('mp-game-over-screen');
+    this.mpHudPanel = document.getElementById('mp-hud-panel');
+    this.mpP1Score = document.getElementById('mp-p1-score');
+    this.mpP1Lives = document.getElementById('mp-p1-lives');
+    this.mpP2Score = document.getElementById('mp-p2-score');
+    this.mpP2Lives = document.getElementById('mp-p2-lives');
+    this.mpP1Name = document.getElementById('mp-p1-name');
+    this.mpP2Name = document.getElementById('mp-p2-name');
   }
 
   setTouchVisible(visible) {
@@ -63,6 +74,9 @@ export class UIManager {
     this.gameOverScreen.classList.add('hidden');
     if (this.skinScreen) this.skinScreen.classList.add('hidden');
     if (this.realmScreen) this.realmScreen.classList.add('hidden');
+    if (this.mpScreen) this.mpScreen.classList.add('hidden');
+    if (this.mpGameOverScreen) this.mpGameOverScreen.classList.add('hidden');
+    if (this.mpHudPanel) this.mpHudPanel.classList.add('hidden');
     this.setTouchVisible(false);
   }
 
@@ -82,11 +96,119 @@ export class UIManager {
     if (this.realmScreen) this.realmScreen.classList.add('hidden');
   }
 
-  showGameHUD() {
+  showMultiplayerScreen() {
+    if (this.mpScreen) this.mpScreen.classList.remove('hidden');
+    this.setTouchVisible(false);
+  }
+
+  hideMultiplayerScreen() {
+    if (this.mpScreen) this.mpScreen.classList.add('hidden');
+  }
+
+  setupMultiplayerHUD(p1Name, p2Name) {
+    if (this.mpP1Name) this.mpP1Name.textContent = p1Name || 'YOU';
+    if (this.mpP2Name) this.mpP2Name.textContent = p2Name || 'OPPONENT';
+    this.updateMultiplayerHUD(0, 0, 3, 3);
+    if (this.mpHudPanel) this.mpHudPanel.classList.remove('hidden');
+  }
+
+  updateMultiplayerHUD(p1Score = 0, p2Score = 0, p1Lives = 3, p2Lives = 3) {
+    if (this.mpP1Score) this.mpP1Score.textContent = p1Score;
+    if (this.mpP2Score) this.mpP2Score.textContent = p2Score;
+
+    const renderHearts = (lives) => {
+      let hearts = '';
+      for (let i = 0; i < 3; i++) {
+        hearts += i < lives ? '❤️' : '🖤';
+      }
+      return hearts;
+    };
+
+    if (this.mpP1Lives) this.mpP1Lives.textContent = renderHearts(p1Lives);
+    if (this.mpP2Lives) this.mpP2Lives.textContent = renderHearts(p2Lives);
+  }
+
+  showMultiplayerGameOver(winnerSlot, winnerName, reason, p1, p2, mySlot) {
+    const isWinner = winnerSlot === mySlot;
+    const isDraw = winnerSlot === 'draw';
+
+    const titleEl = document.getElementById('mp-result-title');
+    const badgeEl = document.getElementById('mp-result-badge');
+    const reasonEl = document.getElementById('mp-result-reason');
+
+    if (titleEl) {
+      if (isDraw) {
+        titleEl.textContent = 'SACRED DRAW!';
+        titleEl.style.color = 'var(--gold-light)';
+      } else if (isWinner) {
+        titleEl.textContent = 'VICTORY!';
+        titleEl.style.color = '#7ad480';
+      } else {
+        titleEl.textContent = 'DEFEAT!';
+        titleEl.style.color = '#a63d2f';
+      }
+    }
+
+    if (badgeEl) {
+      badgeEl.textContent = isDraw
+        ? '◆ EQUAL VALOR ◆'
+        : (isWinner ? '◆ SUPREME SERPENT ◆' : '◆ THE SERPENT FALLS ◆');
+    }
+
+    if (reasonEl) {
+      reasonEl.textContent = reason || (isWinner ? `${winnerName} claims victory!` : 'Better fortune in the next contest.');
+    }
+
+    const sumP1Name = document.getElementById('mp-sum-p1-name');
+    const sumP1Score = document.getElementById('mp-sum-p1-score');
+    const sumP1Lives = document.getElementById('mp-sum-p1-lives');
+
+    const sumP2Name = document.getElementById('mp-sum-p2-name');
+    const sumP2Score = document.getElementById('mp-sum-p2-score');
+    const sumP2Lives = document.getElementById('mp-sum-p2-lives');
+
+    const renderHearts = (lives) => {
+      let hearts = '';
+      for (let i = 0; i < 3; i++) hearts += i < lives ? '❤️' : '🖤';
+      return hearts;
+    };
+
+    if (sumP1Name) sumP1Name.textContent = p1.name || 'PLAYER 1';
+    if (sumP1Score) sumP1Score.textContent = p1.score || 0;
+    if (sumP1Lives) sumP1Lives.textContent = renderHearts(p1.lives);
+
+    if (sumP2Name) sumP2Name.textContent = p2.name || 'PLAYER 2';
+    if (sumP2Score) sumP2Score.textContent = p2.score || 0;
+    if (sumP2Lives) sumP2Lives.textContent = renderHearts(p2.lives);
+
+    const rematchStatus = document.getElementById('mp-rematch-status');
+    if (rematchStatus) rematchStatus.textContent = '';
+
+    const rematchBtn = document.getElementById('mp-rematch-btn');
+    if (rematchBtn) {
+      rematchBtn.disabled = false;
+      rematchBtn.textContent = '⚔️ REMATCH';
+    }
+
+    if (this.mpGameOverScreen) this.mpGameOverScreen.classList.remove('hidden');
+    this.setTouchVisible(false);
+  }
+
+  hideMultiplayerGameOver() {
+    if (this.mpGameOverScreen) this.mpGameOverScreen.classList.add('hidden');
+  }
+
+  showGameHUD(isMultiplayer = false) {
     this.startScreen.classList.add('hidden');
     this.hudLayer.classList.remove('hidden');
     this.pauseScreen.classList.add('hidden');
     this.gameOverScreen.classList.add('hidden');
+    if (this.mpScreen) this.mpScreen.classList.add('hidden');
+    if (this.mpGameOverScreen) this.mpGameOverScreen.classList.add('hidden');
+
+    if (this.mpHudPanel) {
+      this.mpHudPanel.classList.toggle('hidden', !isMultiplayer);
+    }
     this.setTouchVisible(true);
   }
 
@@ -109,6 +231,8 @@ export class UIManager {
     if (this.skinScreen) this.skinScreen.classList.add('hidden');
     if (this.realmScreen) this.realmScreen.classList.add('hidden');
     if (this.leaderboardScreen) this.leaderboardScreen.classList.add('hidden');
+    if (this.mpScreen) this.mpScreen.classList.add('hidden');
+    if (this.mpGameOverScreen) this.mpGameOverScreen.classList.add('hidden');
 
     this.gameOverScreen.classList.remove('hidden');
     this.setTouchVisible(false);

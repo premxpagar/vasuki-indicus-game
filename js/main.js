@@ -8,12 +8,23 @@ import { UIManager } from './UIManager.js';
 import { REALM_PRESETS } from './DayNightCycle.js';
 import { SkinPreviewRenderer } from './SkinPreviewRenderer.js';
 import { LeaderboardService } from './LeaderboardService.js';
+import { NetworkManager } from './NetworkManager.js';
+import { RemoteSnake } from './RemoteSnake.js';
+import { CONFIG } from './config.js';
 
 class GameApp {
   constructor() {
     this.gameState = 'LOADING';
     this.gameMode = 'CAMPAIGN';
     this.skinPreview = null;
+
+    // Multiplayer State
+    this.networkManager = null;
+    this.remoteSnake = null;
+    this.mySlot = 1;
+    this.p1Data = { name: 'Player 1', score: 0, lives: 3 };
+    this.p2Data = { name: 'Player 2', score: 0, lives: 3 };
+    this.lastTickSentTime = 0;
 
     this.score = 0;
     this.highScore = parseInt(localStorage.getItem('vasuki_indicus_highscore') || '0', 10);
@@ -276,6 +287,8 @@ class GameApp {
       this.gameMode = 'ENDLESS';
       this.startGame();
     });
+
+    this.setupMultiplayerUI();
 
     document.getElementById('resume-btn').addEventListener('click', (e) => {
       e.preventDefault();
@@ -571,6 +584,14 @@ class GameApp {
   }
 
   goToHome() {
+    if (this.networkManager) {
+      this.networkManager.leaveRoom();
+    }
+    if (this.remoteSnake) {
+      this.remoteSnake.destroy();
+      this.remoteSnake = null;
+    }
+    this.gameMode = 'CAMPAIGN';
     this.gameState = 'START_SCREEN';
     this.pausedForSettings = false;
     this.touchSteering = 0;
@@ -579,6 +600,319 @@ class GameApp {
     this.snake.reset();
     this.cameraManager.reset();
     this.uiManager.showStartScreen();
+  }
+
+  setupMultiplayerUI() {
+    const openMpBtn = document.getElementById('open-multiplayer-btn');
+    const closeMpBtn = document.getElementById('close-mp-btn');
+    const tabHost = document.getElementById('mp-tab-host');
+    const tabJoin = document.getElementById('mp-tab-join');
+    const hostPane = document.getElementById('mp-host-pane');
+    const joinPane = document.getElementById('mp-join-pane');
+    const createBtn = document.getElementById('mp-create-btn');
+    const joinBtn = document.getElementById('mp-join-btn');
+    const copyCodeBtn = document.getElementById('mp-copy-code-btn');
+    const statusMsg = document.getElementById('mp-status-msg');
+    const rematchBtn = document.getElementById('mp-rematch-btn');
+    const mpHomeBtn = document.getElementById('mp-home-btn');
+
+    const hostNameInput = document.getElementById('mp-host-name');
+    const guestNameInput = document.getElementById('mp-guest-name');
+    const joinCodeInput = document.getElementById('mp-join-code-input');
+    const hostCreatedBox = document.getElementById('mp-host-created-box');
+    const hostActionGroup = document.getElementById('mp-host-action-group');
+    const displayCode = document.getElementById('mp-display-code');
+
+    const savedPlayerName = localStorage.getItem(CONFIG.STORAGE_KEY_PLAYER_NAME) || 'Vasuki';
+    if (hostNameInput) hostNameInput.value = savedPlayerName;
+    if (guestNameInput) guestNameInput.value = savedPlayerName;
+
+    const setStatus = (msg, isErr = false) => {
+      if (!statusMsg) return;
+      statusMsg.textContent = msg;
+      statusMsg.style.color = isErr ? '#e06050' : 'var(--gold-light)';
+    };
+
+    openMpBtn?.addEventListener('click', () => {
+      document.getElementById('start-screen')?.classList.add('hidden');
+      this.uiManager.showMultiplayerScreen();
+      setStatus('');
+      if (hostCreatedBox) hostCreatedBox.classList.add('hidden');
+      if (hostActionGroup) hostActionGroup.classList.remove('hidden');
+      if (createBtn) createBtn.disabled = false;
+      if (joinBtn) joinBtn.disabled = false;
+    });
+
+    closeMpBtn?.addEventListener('click', () => {
+      this.uiManager.hideMultiplayerScreen();
+      document.getElementById('start-screen')?.classList.remove('hidden');
+      if (this.networkManager) {
+        this.networkManager.leaveRoom();
+      }
+    });
+
+    tabHost?.addEventListener('click', () => {
+      tabHost.classList.add('active');
+      tabJoin?.classList.remove('active');
+      hostPane?.classList.remove('hidden');
+      joinPane?.classList.add('hidden');
+      setStatus('');
+    });
+
+    tabJoin?.addEventListener('click', () => {
+      tabJoin.classList.add('active');
+      tabHost?.classList.remove('active');
+      joinPane?.classList.remove('hidden');
+      hostPane?.classList.add('hidden');
+      setStatus('');
+    });
+
+    copyCodeBtn?.addEventListener('click', () => {
+      const code = displayCode?.textContent || '';
+      if (navigator.clipboard && code) {
+        navigator.clipboard.writeText(code).then(() => {
+          copyCodeBtn.textContent = 'COPIED!';
+          setTimeout(() => { copyCodeBtn.textContent = '📋 COPY CODE'; }, 2000);
+        });
+      }
+    });
+
+    const initNetwork = () => {
+      if (!this.networkManager) {
+        this.networkManager = new NetworkManager(CONFIG.WS_SERVER_URL);
+        this.bindNetworkEvents();
+      }
+      return this.networkManager;
+    };
+
+    createBtn?.addEventListener('click', async () => {
+      const name = (hostNameInput?.value || 'Ancient Serpent').trim();
+      const currentSkin = this.snake ? this.snake.currentSkinId : 'emerald';
+      localStorage.setItem(CONFIG.STORAGE_KEY_PLAYER_NAME, name);
+      setStatus('Connecting to realm on server...');
+      createBtn.disabled = true;
+
+      try {
+        const net = initNetwork();
+        await net.createRoom(name, currentSkin);
+      } catch (err) {
+        setStatus('Cannot connect to WebSocket server at ' + CONFIG.WS_SERVER_URL, true);
+        createBtn.disabled = false;
+      }
+    });
+
+    joinBtn?.addEventListener('click', async () => {
+      const name = (guestNameInput?.value || 'Companion Naga').trim();
+      const code = (joinCodeInput?.value || '').trim().toUpperCase();
+      const currentSkin = this.snake ? this.snake.currentSkinId : 'gold';
+
+      if (!code) {
+        setStatus('Please enter the 5-character realm code.', true);
+        return;
+      }
+
+      localStorage.setItem(CONFIG.STORAGE_KEY_PLAYER_NAME, name);
+      setStatus(`Entering realm "${code}"...`);
+      joinBtn.disabled = true;
+
+      try {
+        const net = initNetwork();
+        await net.joinRoom(code, name, currentSkin);
+      } catch (err) {
+        setStatus('Cannot connect to game server: ' + err.message, true);
+        joinBtn.disabled = false;
+      }
+    });
+
+    rematchBtn?.addEventListener('click', () => {
+      if (this.networkManager) {
+        this.networkManager.requestRematch();
+        rematchBtn.disabled = true;
+        rematchBtn.textContent = 'WAITING FOR OPPONENT...';
+      }
+    });
+
+    mpHomeBtn?.addEventListener('click', () => {
+      this.uiManager.hideMultiplayerGameOver();
+      this.goToHome();
+    });
+  }
+
+  bindNetworkEvents() {
+    if (!this.networkManager) return;
+
+    this.networkManager.on('roomCreated', (data) => {
+      const displayCode = document.getElementById('mp-display-code');
+      const hostCreatedBox = document.getElementById('mp-host-created-box');
+      const hostActionGroup = document.getElementById('mp-host-action-group');
+      const statusMsg = document.getElementById('mp-status-msg');
+
+      if (displayCode) displayCode.textContent = data.roomCode;
+      if (hostCreatedBox) hostCreatedBox.classList.remove('hidden');
+      if (hostActionGroup) hostActionGroup.classList.add('hidden');
+      if (statusMsg) {
+        statusMsg.textContent = 'Realm created! Share the code with your companion.';
+        statusMsg.style.color = 'var(--gold-light)';
+      }
+    });
+
+    this.networkManager.on('roomJoined', (data) => {
+      const statusMsg = document.getElementById('mp-status-msg');
+      if (statusMsg) {
+        statusMsg.textContent = `Entered realm ${data.roomCode}! Starting contest...`;
+        statusMsg.style.color = 'var(--gold-light)';
+      }
+    });
+
+    this.networkManager.on('opponentJoined', (data) => {
+      const statusMsg = document.getElementById('mp-status-msg');
+      if (statusMsg) {
+        statusMsg.textContent = `${data.opponent.name} entered! Awakening arena...`;
+        statusMsg.style.color = 'var(--gold-light)';
+      }
+    });
+
+    this.networkManager.on('gameStart', (data) => {
+      this.startMultiplayerGame(data);
+    });
+
+    this.networkManager.on('opponentTick', (data) => {
+      if (this.remoteSnake) {
+        this.remoteSnake.onTickData(data);
+      }
+    });
+
+    this.networkManager.on('appleEaten', (data) => {
+      this.foodManager.removeServerItem(data.appleId);
+      if (data.newApple) {
+        this.foodManager.spawnServerItem(data.newApple.id, data.newApple.x, data.newApple.z, data.newApple.type);
+      }
+      if (data.bySlot === 1) this.p1Data.score = data.score;
+      if (data.bySlot === 2) this.p2Data.score = data.score;
+
+      if (data.bySlot === this.mySlot) {
+        this.score = data.score;
+        this.snake.addSegment();
+        this.audioSystem.playEat(1);
+      } else {
+        this.audioSystem.playEat(1);
+      }
+      this.uiManager.updateMultiplayerHUD(this.p1Data.score, this.p2Data.score, this.p1Data.lives, this.p2Data.lives);
+    });
+
+    this.networkManager.on('lifeLost', (data) => {
+      if (data.slot === 1) this.p1Data.lives = data.remainingLives;
+      if (data.slot === 2) this.p2Data.lives = data.remainingLives;
+
+      this.audioSystem.playExplosion();
+      this.cameraManager.triggerShake(0.5);
+
+      if (data.slot === this.mySlot) {
+        this.snake.respawnAt(data.respawnPos.x, data.respawnPos.y, data.respawnPos.z, data.respawnPos.yaw, true);
+      }
+
+      this.uiManager.updateMultiplayerHUD(this.p1Data.score, this.p2Data.score, this.p1Data.lives, this.p2Data.lives);
+    });
+
+    this.networkManager.on('gameOver', (data) => {
+      this.gameState = 'GAME_OVER';
+      this.audioSystem.stopMusic();
+      this.cameraManager.triggerShake(0.6);
+      this.uiManager.showMultiplayerGameOver(
+        data.winnerSlot,
+        data.winnerName,
+        data.reason,
+        data.p1,
+        data.p2,
+        this.mySlot
+      );
+    });
+
+    this.networkManager.on('rematchRequested', (data) => {
+      const rematchStatus = document.getElementById('mp-rematch-status');
+      if (rematchStatus && data.slot !== this.mySlot) {
+        rematchStatus.textContent = 'Companion requested a rematch! Click REMATCH to play again.';
+        rematchStatus.style.color = 'var(--gold-light)';
+      }
+    });
+
+    this.networkManager.on('rematchAccepted', () => {
+      const rematchStatus = document.getElementById('mp-rematch-status');
+      if (rematchStatus) {
+        rematchStatus.textContent = 'Rematch accepted! Re-entering realm...';
+        rematchStatus.style.color = '#7ad480';
+      }
+    });
+
+    this.networkManager.on('opponentLeft', () => {
+      alert('Your companion serpent has left the realm.');
+      this.uiManager.hideMultiplayerGameOver();
+      this.goToHome();
+    });
+
+    this.networkManager.on('error', (data) => {
+      const statusMsg = document.getElementById('mp-status-msg');
+      if (statusMsg) {
+        statusMsg.textContent = data.message || 'Network error occurred.';
+        statusMsg.style.color = '#e06050';
+      }
+      const joinBtn = document.getElementById('mp-join-btn');
+      const createBtn = document.getElementById('mp-create-btn');
+      if (joinBtn) joinBtn.disabled = false;
+      if (createBtn) createBtn.disabled = false;
+    });
+  }
+
+  startMultiplayerGame(data) {
+    this.gameMode = 'MULTIPLAYER';
+    this.mySlot = data.yourSlot;
+    this.score = 0;
+    this.isBoosting = false;
+    this.nitroEnergy = 100;
+    this.jumpEnergy = 100;
+
+    const myName = (this.mySlot === 1
+      ? document.getElementById('mp-host-name')?.value
+      : document.getElementById('mp-guest-name')?.value) || (this.mySlot === 1 ? 'Player 1' : 'Player 2');
+
+    this.p1Data = {
+      name: this.mySlot === 1 ? myName : data.opponent.name,
+      score: 0,
+      lives: 3
+    };
+    this.p2Data = {
+      name: this.mySlot === 2 ? myName : data.opponent.name,
+      score: 0,
+      lives: 3
+    };
+
+    // Remote Snake
+    if (this.remoteSnake) {
+      this.remoteSnake.destroy();
+    }
+    this.remoteSnake = new RemoteSnake(this.engine.scene, data.opponent.skin);
+
+    // Local Snake setup
+    this.snake.reset();
+    this.snake.respawnAt(data.spawn.x, data.spawn.y, data.spawn.z, data.spawn.yaw, false);
+
+    // Obstacles and Apples
+    this.obstacles.setupSectorObstacles(1);
+    this.foodManager.clearAll();
+    for (const a of data.apples) {
+      this.foodManager.spawnServerItem(a.id, a.x, a.z, a.type);
+    }
+
+    this.cameraManager.reset();
+    this.touchSteering = 0;
+    this.touchBoosting = false;
+    this.pausedForSettings = false;
+    this.resumeGrace = true;
+    this.gameState = 'PLAYING';
+
+    this.uiManager.showGameHUD(true);
+    this.uiManager.setupMultiplayerHUD(this.p1Data.name, this.p2Data.name);
+    this.audioSystem.startMusic();
   }
 
   ensureSkinPreview() {
@@ -857,6 +1191,50 @@ class GameApp {
       this.snake.turnDelta,
       delta
     );
+
+    // --- 1v1 MULTIPLAYER GAMEPLAY LOGIC ---
+    if (this.gameMode === 'MULTIPLAYER') {
+      if (this.remoteSnake) {
+        this.remoteSnake.update(delta);
+      }
+
+      // Send local position tick to server at ~25Hz
+      const nowMs = performance.now();
+      if (this.networkManager && (nowMs - this.lastTickSentTime > 38)) {
+        this.lastTickSentTime = nowMs;
+        this.networkManager.sendTick(
+          this.snake.headPos,
+          this.snake.yaw,
+          this.snake.yOffset,
+          this.isBoosting,
+          this.snake.segments,
+          this.snake.isInvulnerable
+        );
+      }
+
+      this.foodManager.update(time, delta);
+      const mpPickup = this.foodManager.checkMultiplayerPickups(this.snake.headPos, this.snake.yOffset);
+      if (mpPickup && mpPickup.id) {
+        this.networkManager.eatApple(mpPickup.id);
+      }
+
+      // 3-Lives Collision Checks
+      const hitRemoteBody = this.remoteSnake && this.remoteSnake.checkBodyCollision(this.snake.headPos);
+      const hitRemoteHead = this.remoteSnake && this.remoteSnake.checkHeadCollision(this.snake.headPos);
+      const hitObstacle = this.obstacles.checkCollisions(this.snake.headPos, this.snake.yOffset);
+      const hitSelf = this.snake.checkSelfCollision();
+      const hitBoundary = this.snake.checkBoundaryCollision();
+
+      if (!this.snake.isInvulnerable) {
+        if (hitRemoteBody || hitRemoteHead || hitObstacle || hitSelf || hitBoundary) {
+          const reason = hitRemoteHead ? 'head_on' : (hitRemoteBody ? 'body_collision' : 'obstacle');
+          this.networkManager.reportHit(reason);
+          this.snake.isInvulnerable = true;
+          this.snake.invulnTimer = 3.0; // Debounce until server confirms
+        }
+      }
+      return;
+    }
 
     this.foodManager.update(time, delta);
     const pickupType = this.foodManager.checkPickups(this.snake.headPos, this.snake.yOffset);

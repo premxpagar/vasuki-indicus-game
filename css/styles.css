@@ -1082,4 +1082,185 @@ body.touch-ui .pixel-btn {
   letter-spacing: 0.5px;
 }
 
+/* ===== 1v1 MULTIPLAYER STYLES ===== */
+.mp-launch-btn {
+  background: linear-gradient(135deg, #8a2a1d 0%, #a63d2f 50%, #c49a54 100%) !important;
+  border-color: #ffd700 !important;
+  color: #fff8e7 !important;
+  box-shadow: 0 0 12px rgba(196, 154, 84, 0.4) !important;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  margin-top: 4px;
+}
+
+.mp-launch-btn:hover {
+  background: linear-gradient(135deg, #a63d2f 0%, #c49a54 50%, #e0c078 100%) !important;
+  box-shadow: 0 0 18px rgba(255, 215, 0, 0.6) !important;
+}
+
+.mp-tabs {
+  display: flex;
+  width: 100%;
+  border-bottom: 2px solid var(--panel-highlight);
+  margin-bottom: 16px;
+  gap: 4px;
+}
+
+.mp-tab-btn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: var(--text-muted);
+  font-family: var(--font-heading);
+  font-size: 11px;
+  padding: 10px 8px;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: all 0.2s ease;
+}
+
+.mp-tab-btn.active {
+  color: var(--gold-light);
+  border-bottom-color: var(--gold);
+  background: rgba(196, 154, 84, 0.1);
+  font-weight: 700;
+}
+
+.mp-pane {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.mp-code-box {
+  background: #110f0c;
+  border: 2px dashed var(--gold);
+  padding: 14px 20px;
+  margin: 14px 0 6px;
+  text-align: center;
+  width: 100%;
+  box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.8);
+}
+
+.mp-code-text {
+  font-family: var(--font-heading);
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: 6px;
+  color: #ffd700;
+  text-shadow: 0 0 12px rgba(255, 215, 0, 0.7);
+  margin: 4px 0 8px;
+  user-select: all;
+}
+
+.mp-waiting-text {
+  font-size: 11px;
+  color: var(--gold-light);
+  margin-top: 10px;
+  letter-spacing: 0.8px;
+}
+
+.mp-code-input {
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  letter-spacing: 4px !important;
+  text-align: center !important;
+  width: 100% !important;
+  max-width: 240px !important;
+  padding: 10px !important;
+}
+
+/* 2-Player Battle HUD (In-Game) */
+#mp-hud-panel {
+  position: fixed;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  pointer-events: none;
+  background: rgba(26, 23, 20, 0.88);
+  border: 1px solid var(--panel-highlight);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  padding: 6px 14px;
+}
+
+.mp-player-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 80px;
+}
+
+.mp-card-p1 .mp-player-name {
+  color: #7ad480;
+}
+
+.mp-card-p2 .mp-player-name {
+  color: #f0a060;
+}
+
+.mp-player-name {
+  font-family: var(--font-heading);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.mp-player-score {
+  font-family: var(--font-heading);
+  font-size: 16px;
+  font-weight: 900;
+  color: var(--gold-light);
+  margin: 1px 0;
+}
+
+.mp-player-lives {
+  font-size: 13px;
+  letter-spacing: 2px;
+}
+
+.mp-vs-badge {
+  font-family: var(--font-heading);
+  font-size: 11px;
+  font-weight: 900;
+  color: var(--gold);
+  background: #141210;
+  border: 1px solid var(--gold-dark);
+  padding: 4px 8px;
+  letter-spacing: 1px;
+}
+
+/* Multiplayer Game Over Summary */
+.mp-vs-summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  width: 100%;
+  margin: 16px 0;
+}
+
+.mp-summary-card {
+  flex: 1;
+  background: #171410;
+  border: 1px solid var(--panel-highlight);
+  padding: 12px 14px;
+  text-align: center;
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.7);
+}
+
+.mp-summary-divider {
+  font-family: var(--font-heading);
+  font-size: 14px;
+  font-weight: 900;
+  color: var(--gold);
+}
+
+
 

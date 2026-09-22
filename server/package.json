@@ -1,0 +1,13 @@
+{
+  "name": "vasuki-indicus-server",
+  "version": "1.0.0",
+  "description": "Real-time 1v1 WebSocket Game Server for Vasuki Indicus",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

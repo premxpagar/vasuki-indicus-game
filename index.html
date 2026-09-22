@@ -59,6 +59,21 @@
             <div id="buff-container"></div>
         </div>
 
+        <!-- 2-Player Multiplayer Battle HUD -->
+        <div id="mp-hud-panel" class="hidden">
+            <div class="mp-player-card mp-card-p1">
+                <div class="mp-player-name" id="mp-p1-name">YOU</div>
+                <div class="mp-player-score" id="mp-p1-score">0</div>
+                <div class="mp-player-lives" id="mp-p1-lives">❤️❤️❤️</div>
+            </div>
+            <div class="mp-vs-badge">VS</div>
+            <div class="mp-player-card mp-card-p2">
+                <div class="mp-player-name" id="mp-p2-name">OPPONENT</div>
+                <div class="mp-player-score" id="mp-p2-score">0</div>
+                <div class="mp-player-lives" id="mp-p2-lives">❤️❤️❤️</div>
+            </div>
+        </div>
+
         <!-- Bottom Left: Meters -->
         <div class="hud-bottom-left">
             <div class="pixel-panel meter-panel">
@@ -139,6 +154,7 @@
             <div class="btn-group">
                 <button id="start-campaign-btn" class="pixel-btn">► START GAME</button>
                 <button id="start-endless-btn" class="pixel-btn secondary">► ENDLESS MODE</button>
+                <button id="open-multiplayer-btn" class="pixel-btn mp-launch-btn">⚔️ MULTIPLAYER (1v1)</button>
             </div>
 
             <div class="home-custom-actions" style="display: flex; justify-content: center; gap: 8px; margin-top: 12px; width: 100%; flex-wrap: wrap;">
@@ -323,6 +339,87 @@
             <div class="btn-group">
                 <button id="refresh-leaderboard-btn" class="pixel-btn secondary">🔄 REFRESH</button>
                 <button id="close-leaderboard-btn" class="pixel-btn">CLOSE</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 1v1 Multiplayer Lobby Modal -->
+    <div id="multiplayer-screen" class="overlay-screen hidden">
+        <div class="pixel-modal center-content" style="max-width: 480px;">
+            <div class="badge">◆ SACRED ARENA ◆</div>
+            <h2 class="pixel-title" style="font-size: clamp(16px, 4vw, 24px);">1v1 MULTIPLAYER</h2>
+            <p class="description" style="margin-bottom: 14px;">Clash with a companion serpent. Gather offerings, survive 3 strikes, and outscore your rival.</p>
+
+            <div class="mp-tabs">
+                <button id="mp-tab-host" class="mp-tab-btn active" type="button">HOST REALM</button>
+                <button id="mp-tab-join" class="mp-tab-btn" type="button">JOIN REALM</button>
+            </div>
+
+            <!-- Host Pane -->
+            <div id="mp-host-pane" class="mp-pane">
+                <div class="submit-score-row" style="width: 100%; margin-bottom: 8px;">
+                    <input type="text" id="mp-host-name" class="submit-input" maxlength="14" placeholder="SERPENT NAME" autocomplete="off" spellcheck="false" style="max-width: 100%;">
+                </div>
+
+                <div id="mp-host-created-box" class="mp-code-box hidden">
+                    <div class="hud-label" style="letter-spacing: 2px;">SHARE CODE WITH FRIEND</div>
+                    <div id="mp-display-code" class="mp-code-text">VASU8</div>
+                    <button id="mp-copy-code-btn" class="pixel-btn secondary" type="button" style="font-size: 10px; padding: 6px 12px; margin-top: 4px;">📋 COPY CODE</button>
+                    <p class="mp-waiting-text"><span class="pixel-blink">⏳</span> Waiting for companion to join...</p>
+                </div>
+
+                <div class="btn-group" id="mp-host-action-group" style="margin-top: 10px;">
+                    <button id="mp-create-btn" class="pixel-btn" type="button">► CREATE REALM</button>
+                </div>
+            </div>
+
+            <!-- Join Pane -->
+            <div id="mp-join-pane" class="mp-pane hidden">
+                <div class="submit-score-row" style="width: 100%; margin-bottom: 8px;">
+                    <input type="text" id="mp-guest-name" class="submit-input" maxlength="14" placeholder="SERPENT NAME" autocomplete="off" spellcheck="false" style="max-width: 100%;">
+                </div>
+                <div class="submit-score-row" style="width: 100%; margin-bottom: 8px;">
+                    <input type="text" id="mp-join-code-input" class="submit-input mp-code-input" maxlength="6" placeholder="REALM CODE" autocomplete="off" spellcheck="false">
+                </div>
+                <div class="btn-group" style="margin-top: 10px;">
+                    <button id="mp-join-btn" class="pixel-btn" type="button">► ENTER REALM</button>
+                </div>
+            </div>
+
+            <div id="mp-status-msg" class="submit-feedback"></div>
+
+            <div class="btn-group" style="margin-top: 14px;">
+                <button id="close-mp-btn" class="pixel-btn secondary" type="button">CLOSE</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Multiplayer Game Over Modal -->
+    <div id="mp-game-over-screen" class="overlay-screen hidden">
+        <div class="pixel-modal center-content" style="max-width: 480px;">
+            <div id="mp-result-badge" class="badge">◆ CONTEST COMPLETE ◆</div>
+            <h2 id="mp-result-title" class="title-over" style="margin-bottom: 8px;">VICTORY!</h2>
+            <p id="mp-result-reason" class="description" style="margin-bottom: 16px;">The sacred offering contest has concluded.</p>
+
+            <div class="mp-vs-summary">
+                <div class="mp-summary-card" id="mp-summary-p1">
+                    <div class="hud-label" id="mp-sum-p1-name">YOU</div>
+                    <div class="stat-val" id="mp-sum-p1-score">0</div>
+                    <div class="hud-sub" id="mp-sum-p1-lives">❤️❤️❤️</div>
+                </div>
+                <div class="mp-summary-divider">VS</div>
+                <div class="mp-summary-card" id="mp-summary-p2">
+                    <div class="hud-label" id="mp-sum-p2-name">OPPONENT</div>
+                    <div class="stat-val" id="mp-sum-p2-score">0</div>
+                    <div class="hud-sub" id="mp-sum-p2-lives">❤️❤️❤️</div>
+                </div>
+            </div>
+
+            <div id="mp-rematch-status" class="submit-feedback"></div>
+
+            <div class="btn-group" style="margin-top: 16px;">
+                <button id="mp-rematch-btn" class="pixel-btn" type="button">⚔️ REMATCH</button>
+                <button id="mp-home-btn" class="pixel-btn secondary" type="button">🏠 HOME</button>
             </div>
         </div>
     </div>

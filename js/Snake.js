@@ -308,6 +308,45 @@ export class Snake {
         }
     }
 
+    respawnAt(x = 0, y = 0.5, z = 0, yaw = 0, preserveLength = true) {
+        this.headPos.set(x, y, z);
+        this.yaw = yaw;
+        this.turnDelta = 0;
+        this.yOffset = 0;
+        this.verticalVelocity = 0;
+        this.isJumping = false;
+        this.hasShield = false;
+        this.shieldTimer = 0;
+        this.isInvulnerable = true;
+        this.invulnTimer = 3.0;
+        this.steerSmoothed = 0;
+        this.pathHistory = [];
+
+        if (this.headGroup) {
+            this.headGroup.position.set(x, y, z);
+            this.headGroup.rotation.set(0, yaw, 0);
+            this.headGroup.visible = true;
+        }
+
+        if (!preserveLength) {
+            while (this.segments.length > 4) {
+                const seg = this.segments.pop();
+                this.scene.remove(seg.mesh);
+                if (seg.mesh.geometry) seg.mesh.geometry.dispose();
+                if (seg.mesh.material) seg.mesh.material.dispose();
+            }
+        }
+
+        for (let i = 0; i < this.segments.length; i++) {
+            const dist = (i + 1) * this.segmentSpacing;
+            const sx = x - Math.sin(yaw) * dist;
+            const sz = z - Math.cos(yaw) * dist;
+            this.segments[i].mesh.position.set(sx, y, sz);
+            this.segments[i].mesh.rotation.y = yaw;
+            this.pathHistory.push({ x: sx, y, z: sz, yaw });
+        }
+    }
+
     updateIdle(time) {
         if (!this.headGroup) return;
         const wave = Math.sin(time * 2.4);

@@ -10,6 +10,9 @@ export const CONFIG = {
   // Production AWS API Gateway HTTP API endpoint
   API_GATEWAY_URL: 'https://5si18uxg7i.execute-api.eu-north-1.amazonaws.com',
 
+  // WebSocket Server endpoint for 1v1 Multiplayer (local testing: ws://localhost:3000, production: wss://your-app-runner-url)
+  WS_SERVER_URL: 'ws://localhost:3000',
+
   // Endpoints
   LEADERBOARD_ENDPOINT: '/leaderboard',
 

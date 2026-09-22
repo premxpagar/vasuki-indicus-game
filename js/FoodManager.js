@@ -74,12 +74,43 @@ export class FoodManager {
         this.scene.add(modelGroup);
         
         this.items.push({
+            id: customPos && customPos.id ? customPos.id : null,
             group: modelGroup,
             type: type,
             baseY: 0.4,
             phase: Math.random() * Math.PI * 2,
             color: pColor
         });
+    }
+
+    spawnServerItem(id, x, z, type = 'core') {
+        // If item with this ID already exists, do nothing
+        if (this.items.some(i => i.id === id)) return;
+        const pos = new THREE.Vector3(x, 0.4, z);
+        pos.id = id;
+        this.spawnItem(type, pos);
+    }
+
+    removeServerItem(id) {
+        const idx = this.items.findIndex(i => i.id === id);
+        if (idx !== -1) {
+            const item = this.items[idx];
+            this.createPickupBurst(item.group.position, item.color);
+            this.scene.remove(item.group);
+            this.items.splice(idx, 1);
+        }
+    }
+
+    checkMultiplayerPickups(headPos, headYOffset) {
+        const pickupRadius = 1.6;
+        for (let i = this.items.length - 1; i >= 0; i--) {
+            const item = this.items[i];
+            const dist = new THREE.Vector2(headPos.x - item.group.position.x, headPos.z - item.group.position.z).length();
+            if (dist < pickupRadius && Math.abs(headYOffset - item.baseY) < 2.0) {
+                return { id: item.id, type: item.type };
+            }
+        }
+        return null;
     }
 
     setContext(getSnakePos, getBlockers) {
